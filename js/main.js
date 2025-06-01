@@ -7,6 +7,7 @@ let countries = []; // Array to store country meshes
 let countriesGroup = new THREE.Group(); // Group to hold all countries
 let currentHoveredCountry = null;
 let raycaster = new THREE.Raycaster();
+let FLOOR_HEIGHT = 8.5; // Height of the ocean floor
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 const scene = new THREE.Scene();
@@ -15,13 +16,15 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 const camControls = new SpectatorControls(camera);
 const clock = new THREE.Clock();
 const canvas = renderer.domElement;
+const countryAnimations = new Map(); // track country animations
 
+const WD = 15; // Scale for the world
 // floor (ocean)
 const floorGeometry = new THREE.PlaneGeometry(2000, 2000);
 const floorMaterial = new THREE.MeshLambertMaterial({ color: new THREE.Color(.1,.1,1) }); 
 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 floor.rotation.x = -Math.PI / 2;
-floor.position.y = 8.5; // Slightly below the camera
+floor.position.y = FLOOR_HEIGHT; // Slightly below the camera
 floor.receiveShadow = true;
 scene.add(floor);
 
@@ -45,18 +48,25 @@ scene.add(light);
 
 // Rotate the countries group to be horizontal
 countriesGroup.rotation.x = -Math.PI / 2;
-countriesGroup.scale.set(10, 10, 10); 
+countriesGroup.scale.set(WD, WD, WD); 
 camControls.enable();
-
+let y = camera.position.y;
+let lasty = camera.position.y;
 animate();
 
 function animate() {
+    y = camera.position.y;
+    if (y!== lasty) {
+        //console.log('y:', y);
+        lasty = y;
+    }
     requestAnimationFrame(animate);
     
     const delta = clock.getDelta();
     camControls.update(delta);
     
     checkPlayerOverCountry();
+    gravity(delta);
     
     renderer.render(scene, camera);
 }
@@ -223,10 +233,15 @@ function checkPlayerOverCountry() {
 
 function extrudeCountry(country) {
     if (!country.userData.isExtruded) {
+        // cancel any ongoing animation for this country
+        if (countryAnimations.has(country)) {
+            cancelAnimationFrame(countryAnimations.get(country));
+        }
+        
         const targetScale = 3;
-        const duration = 800;
+        const duration = 5000;
         const startTime = Date.now();
-        const originalScale = country.scale.y;
+        const originalScale = country.scale.z;
         
         function animate() {
             const elapsed = Date.now() - startTime;
@@ -236,35 +251,77 @@ function extrudeCountry(country) {
             country.scale.z = originalScale + (targetScale - originalScale) * easeProgress;
             
             if (progress < 1) {
-                requestAnimationFrame(animate);
+                const animationId = requestAnimationFrame(animate);
+                countryAnimations.set(country, animationId);
+            } else {
+                countryAnimations.delete(country);
             }
         }
-        
         animate();
         country.userData.isExtruded = true;
     }
 }
 
+
 function restoreCountryHeight(country) {
-    if (country.userData.isExtruded) {
-        const targetScale = 1;
-        const duration = 900;
-        const startTime = Date.now();
-        const originalScale = country.scale.y;
-        
-        function animate() {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const easeProgress = 1 - Math.pow(1 - progress, 3);
-            
-            country.scale.z = originalScale + (targetScale - originalScale) * easeProgress;
-            
-            if (progress < 1) {
-                requestAnimationFrame(animate);
+    return new Promise((resolve) => {
+        if (country.userData.isExtruded) {
+            // cancel any ongoin anim
+            if (countryAnimations.has(country)) {
+                cancelAnimationFrame(countryAnimations.get(country));
+                countryAnimations.delete(country);
             }
+            
+            const targetScale = 1;
+            const duration = 1000;
+            const startTime = Date.now();
+            const originalScale = country.scale.z; 
+            
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                
+                country.scale.z = originalScale + (targetScale - originalScale) * easeProgress;
+                
+                if (progress < 1) {
+                    const animationId = requestAnimationFrame(animate);
+                    countryAnimations.set(country, animationId);
+                } else {
+                    country.scale.z = targetScale;
+                    country.userData.isExtruded = false;
+                    countryAnimations.delete(country);
+                    resolve();
+                }
+            }
+            animate();
+        } else {
+            resolve();
         }
-        
-        animate();
-        country.userData.isExtruded = false;
+    });
+}
+
+function gravity(deltaTime) {
+    const gravityForce = 9.81;
+    const playerPosition = camera.position.clone();
+    const downDirection = new THREE.Vector3(0, -1, 0);
+    
+    raycaster.set(playerPosition, downDirection);
+    const intersects = raycaster.intersectObjects(countries);
+    
+    let targetHeight = FLOOR_HEIGHT + 12; // Minimum height above the ocean floor
+    
+    if (intersects.length > 0) {
+        const intersectionPoint = intersects[0].point;
+        targetHeight = intersectionPoint.y + 2;
     }
+    
+    // only apply gravity if the camera is above the target height
+    if (camera.position.y > targetHeight) {
+        const fallDistance = gravityForce * deltaTime;
+        camera.position.y = Math.max(camera.position.y - fallDistance, targetHeight);
+    } else {
+        camera.position.y = targetHeight;
+    }
+    
 }
