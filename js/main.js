@@ -29,7 +29,10 @@ scene.add(floor);
 scene.add(countriesGroup);
 
 // world 
-loadGeoJSONFile("globalGJson.json");
+
+loadGeoJSONFile("./js/data/globalGJson.json");
+
+
 
 renderer.setSize(WIDTH, HEIGHT);
 document.body.appendChild(renderer.domElement);
