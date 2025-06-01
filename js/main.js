@@ -29,7 +29,7 @@ scene.add(floor);
 scene.add(countriesGroup);
 
 // world 
-loadGeoJSONFile("../globalGJson.json");
+loadGeoJSONFile("globalGJson.json");
 
 renderer.setSize(WIDTH, HEIGHT);
 document.body.appendChild(renderer.domElement);
@@ -100,7 +100,6 @@ function loadGeoJSONFile(url) {
         })
         .catch(error => {
             console.error('Error loading gJson', error);
-            console.log('Usando datos de ejemplo...');
         });
 }
 
