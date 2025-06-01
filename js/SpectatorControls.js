@@ -145,9 +145,17 @@ export default class SpectatorControls {
 	_moveCamera(velocity) {
 		velocity.multiplyScalar(this.friction);
 		velocity.clampLength(0, this.moveSpeed);
-		this.camera.translateZ(velocity.z);
-		this.camera.translateX(velocity.x);
-		this.camera.translateY(velocity.y);
+		
+		// no vertical flight
+		const yRotation = new THREE.Matrix4().makeRotationY(this.camera.rotation.y);
+		
+		// only horizontal movement
+		const horizontalMovement = new THREE.Vector3(velocity.x, 0, velocity.z);
+		horizontalMovement.applyMatrix4(yRotation);
+		
+		this.camera.position.x += horizontalMovement.x;
+		this.camera.position.y += velocity.y;
+		this.camera.position.z += horizontalMovement.z;
 	}
 	mapKey(key, action) {
 		this.keyMapping = Object.assign({}, this.keyMapping, { [key]: action });
