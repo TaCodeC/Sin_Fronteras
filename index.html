@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!--<link rel = "stylesheet" href = "styles.css"/> -->
+  <link rel = "stylesheet" href = "styles.css"/>
   <title>Sin Fronters</title>
 
   <script type="importmap">
@@ -11,11 +11,16 @@
       "imports": {
         "three": "https://cdn.jsdelivr.net/npm/three@0.176.0/build/three.module.js",
         "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/"
+        
       }
     }
   </script>
 </head>
 <body>
     <script type="module" src="js/main.js"></script>
+    <div id="country-hud" class="hidden">
+        <p id="country-name">CT</p>
+        <p id="Foreign-Status">XP</p>
+    </div>
 </body>
 </html>
