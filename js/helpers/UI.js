@@ -12,15 +12,26 @@ class CountryHUD {
     // Shader properties
     this.program = null;
     this.startTime = Date.now();
+    this.animationId = null; // Track animation frame
     
     // Uniform locations
     this.timeLocation = null;
     this.resolutionLocation = null;
     this.colorLocation = null;
-    
+
+    this.u_net_migrationLocation = null;
+    this.u_percent_changeLocation = null;
+    this.u_migration_trendLocation = null;
+    this.u_population_ratioLocation = null;
+    this.u_has_dataLocation = null;
+
     // Current shader uniforms
     this.uniforms = {
-      color: [0.2, 0.8, 1.0]
+      u_net_migration: 0.0,
+      u_percent_change: 0.0,
+      u_migration_trend: 0.5, 
+      u_population_ratio: 0.0,
+      u_has_data: 0.0,
     };
     
     this.init();
@@ -132,9 +143,18 @@ class CountryHUD {
     this.timeLocation = this.gl.getUniformLocation(this.program, "u_time");
     this.resolutionLocation = this.gl.getUniformLocation(this.program, "u_resolution");
     this.colorLocation = this.gl.getUniformLocation(this.program, "u_color");
+
+    this.u_net_migrationLocation = this.gl.getUniformLocation(this.program, "u_net_migration");
+    this.u_percent_changeLocation = this.gl.getUniformLocation(this.program, "u_percent_change");
+    this.u_migration_trendLocation = this.gl.getUniformLocation(this.program, "u_migration_trend");
+    this.u_population_ratioLocation = this.gl.getUniformLocation(this.program, "u_population_ratio");
+    this.u_has_dataLocation = this.gl.getUniformLocation(this.program, "u_has_data");
+    
+    this.setInitialUniforms();
   }
   
   startAnimation() {
+    // Cancel any existing animation
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
     }
@@ -143,8 +163,34 @@ class CountryHUD {
     this.animate();
   }
   
+  setInitialUniforms() {
+    if (!this.program || !this.gl) return;
+    
+    this.gl.useProgram(this.program);
+    
+    if (this.colorLocation) {
+      this.gl.uniform3fv(this.colorLocation, this.uniforms.color);
+    }
+    if (this.u_net_migrationLocation) {
+      this.gl.uniform1f(this.u_net_migrationLocation, this.uniforms.u_net_migration);
+    }
+    if (this.u_percent_changeLocation) {
+      this.gl.uniform1f(this.u_percent_changeLocation, this.uniforms.u_percent_change);
+    }
+    if (this.u_migration_trendLocation) {
+      this.gl.uniform1f(this.u_migration_trendLocation, this.uniforms.u_migration_trend);
+    }
+    if (this.u_population_ratioLocation) {
+      this.gl.uniform1f(this.u_population_ratioLocation, this.uniforms.u_population_ratio);
+    }
+    if (this.u_has_dataLocation) {
+      this.gl.uniform1f(this.u_has_dataLocation, this.uniforms.u_has_data);
+    }
+  }
+  
   animate() {
     if (!this.isVisible || !this.program) {
+      this.animationId = null;
       return;
     }
     
@@ -152,7 +198,7 @@ class CountryHUD {
     
     this.gl.useProgram(this.program);
     
-    // Set all uniforms
+    // Set time-based uniforms
     if (this.timeLocation) {
       this.gl.uniform1f(this.timeLocation, currentTime);
     }
@@ -161,27 +207,50 @@ class CountryHUD {
       this.gl.uniform2f(this.resolutionLocation, this.canvas.width, this.canvas.height);
     }
     
-    if (this.colorLocation) {
-      this.gl.uniform3fv(this.colorLocation, this.uniforms.color);
-    }
-    
-    
     // Clear and draw
     this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
     
+    // Continue animation loop
+    this.animationId = requestAnimationFrame(() => this.animate());
   }
   
   // Method to update shader uniforms
   updateUniforms(newUniforms) {
+    // Update local uniforms object
     Object.assign(this.uniforms, newUniforms);
+    
+    // Immediately update GPU uniforms
+    if (this.program && this.gl) {
+      this.gl.useProgram(this.program);
+      
+      // Only update uniforms that have changed
+      if (newUniforms.u_net_migration !== undefined && this.u_net_migrationLocation) {
+        this.gl.uniform1f(this.u_net_migrationLocation, newUniforms.u_net_migration);
+      }
+      if (newUniforms.u_percent_change !== undefined && this.u_percent_changeLocation) {
+        this.gl.uniform1f(this.u_percent_changeLocation, newUniforms.u_percent_change);
+      }
+      if (newUniforms.u_migration_trend !== undefined && this.u_migration_trendLocation) {
+        this.gl.uniform1f(this.u_migration_trendLocation, newUniforms.u_migration_trend);
+      }
+      if (newUniforms.u_population_ratio !== undefined && this.u_population_ratioLocation) {
+        this.gl.uniform1f(this.u_population_ratioLocation, newUniforms.u_population_ratio);
+      }
+      if (newUniforms.u_has_data !== undefined && this.u_has_dataLocation) {
+        this.gl.uniform1f(this.u_has_dataLocation, newUniforms.u_has_data);
+      }
+    }
+    
+    console.log("Updated uniforms:", this.uniforms);
   }
   
   hide() {
     this.hudElement.style.display = "none";
     this.isVisible = false;
     
+    // Stop animation
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
