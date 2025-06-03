@@ -10,18 +10,18 @@ const DOWN = 1 << 5;
 const SPRINT = 1 << 6;
 
 // defaults
-const MOVESPEED = 50;
+const MOVESPEED = 35;
 const FRICTION = 0.9;
 const LOOKSPEED = 0.005;
-const SPRINTMULT = 2;
+const SPRINTMULT = 4.5;
 const KEYMAPPING = {
 	87: 'FORWARD', /* W */
 	83: 'BACK', /* S */
 	65: 'LEFT', /* A */
 	68: 'RIGHT', /* D */
 	32: 'UP', /* Spacebar */
-	67: 'DOWN', /* C */
-	16: 'SPRINT', /* Shift */
+	16: 'DOWN', /* Shift */
+	17: 'SPRINT', /* CTRL */
 };
 
 export default class SpectatorControls {
